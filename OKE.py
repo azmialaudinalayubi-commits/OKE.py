@@ -5,22 +5,17 @@ from datetime import date
 import os
 
 
-# ================================
-# DATABASE CONNECTION
-# ================================
 def connect():
     conn = psycopg2.connect(
         host="localhost",
-        database="SIMPANANN",   # sesuaikan dengan nama database kamu
+        database="SIMPANANN",   
         user="postgres",
         password="Azma140700",
          
     )
     return conn
 
-# ================================
-# WRAPPER QUERY
-# ================================
+
 def query_execute(conn, sql, params=None, return_lastrow=False):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(sql, params or ())
@@ -41,9 +36,6 @@ def query_fetch(conn, sql, params=None):
     cur.close()
     return rows
 
-# ================================
-# INPUT VALIDATION
-# ================================
 def input_required(msg):
     while True:
         v = input(msg).strip()
@@ -68,9 +60,7 @@ def input_luas_lahan(msg="luas lahan (ha, maksimal 2): ", max_value=2.0):
                 print(f"Luas lahan tidak boleh lebih dari {max_value} ha.")
         except:
             print("Harus berupa angka desimal atau bilangan bulat!")
-# ================================
-# ROLE HELPER
-# ================================
+
 def get_or_create_role(conn, role_name_input):
     """
     role_name_input: 'admin' / 'ketua' / 'petani'
@@ -90,7 +80,7 @@ def get_or_create_role(conn, role_name_input):
     if rows:
         return rows[0]['id_roles']
 
-    # Jika belum ada di master roles, buat baru
+
     row = query_execute(conn,
         "INSERT INTO roles (nama_roles) VALUES (%s) RETURNING id_roles",
         (nama_roles,),
@@ -98,16 +88,13 @@ def get_or_create_role(conn, role_name_input):
     )
     return row['id_roles']
 
-# ================================
-# AUTH
-# ================================
 def register(conn):
     os.system('cls')
     print("\n=== REGISTER USER ===")
     nama = input_required("Nama lengkap : ")
     username = input_required("Username : ")
     
-    # password
+   
     while True:
         pw = getpass.getpass("Password: ")
         pw2 = getpass.getpass("Ulangi password: ")
@@ -119,7 +106,6 @@ def register(conn):
     nomor_hp = input_required("Nomor HP : ")
 
 
-    # ====== PILIH ROLE ======
     print("\nPilih role:")
     print("1. Admin")
     print("2. Ketua kelompok tani")
@@ -137,9 +123,7 @@ def register(conn):
 
     nama_role = role_map[role_input]
 
-    # ===============================
-    # KHUSUS KETUA: WAJIB SK (PDF)
-    # ===============================
+  
     sk_path = None
     if nama_role == "Ketua kelompok tani":
         while True:
@@ -150,20 +134,16 @@ def register(conn):
             if not os.path.exists(sk_path):
                 print("File tidak ditemukan di path tersebut!")
                 continue
-            # kalau sampai sini, file valid
+        
             print("✔ SK ketua ditemukan dan valid.")
-            os.system('cls')
             break
 
-    # ==================================
-    # DATA KECAMATAN & KETUA (UNTUK PETANI)
-    # ==================================
+   
     nama_kecamatan = None
     nama_alamat = None
-    ketua_dipilih = None  # hanya dipakai untuk display
+    ketua_dipilih = None 
 
     if nama_role == "Petani":
-        # --- pilih kecamatan dari tabel kecamatan (bukan input bebas) ---
         rows_kec = query_fetch(conn, """
     SELECT DISTINCT ON (LOWER(nama_kecamatan))
         nama_kecamatan
@@ -171,7 +151,6 @@ def register(conn):
     WHERE nama_kecamatan IS NOT NULL
     ORDER BY LOWER(nama_kecamatan);
 """)
-
 
         if rows_kec:
             print("\nPilih kecamatan:")
@@ -182,11 +161,9 @@ def register(conn):
                 idx = input_int("Pilih nomor kecamatan: ") - 1
             nama_kecamatan = rows_kec[idx]['nama_kecamatan']
         else:
-            # kalau belum ada di DB, fallback ke input manual
             print("\nBelum ada data kecamatan di tabel, isi manual.")
             nama_kecamatan = input_required("Nama kecamatan : ")
 
-        # --- pilih ketua kelompok tani dari tabel users + roles ---
         rows_ketua = query_fetch(conn, """
             SELECT DISTINCT u.id_users, u.nama
             FROM users u
@@ -209,18 +186,12 @@ def register(conn):
         else:
             print("\nBelum ada ketua kelompok tani terdaftar di sistem.")
             os.system('cls')
-
-        # alamat tetap diinput manual (alamat detail)
         nama_alamat = input_required("Alamat lengkap : ")
 
     else:
-        # Admin & Ketua: boleh isi kecamatan & alamat manual
         nama_kecamatan = input_required("Nama kecamatan : ")
         nama_alamat = input_required("Alamat lengkap : ")
 
-    # =========================================
-    # 1. Ambil ID role dari tabel roles
-    # =========================================
     cek_role = query_fetch(conn,
         "SELECT id_roles FROM roles WHERE nama_roles = %s",
         (nama_role,)
@@ -236,9 +207,6 @@ def register(conn):
         )
         id_roles = row_role['id_roles']
 
-    # =========================================
-    # 2. Insert ke tabel users (tanpa id_roles)
-    # =========================================
     new_user = query_execute(conn, """
         INSERT INTO users (nama, username, password, nomor_hp)
         VALUES (%s, %s, %s, %s)
@@ -247,17 +215,12 @@ def register(conn):
 
     id_users = new_user['id_users']
 
-    # =========================================
-    # 3. Insert relasi ke user_role
-    # =========================================
+
     query_execute(conn, """
         INSERT INTO user_role (id_users, id_roles)
         VALUES (%s, %s)
     """, (id_users, id_roles))
 
-    # =========================================
-    # 4. Insert ke kecamatan (id_users, nama_kecamatan, nama_alamat)
-    # =========================================
     query_execute(conn, """
         INSERT INTO kecamatan (id_users, nama_kecamatan, nama_alamat)
         VALUES (%s, %s, %s)
@@ -283,10 +246,10 @@ def login(conn):
         (username, pw)
     )
     if rows:
-        user = dict(rows[0])  # Convert DictCursor to regular dict
+        user = dict(rows[0])  
         id_users = user['id_users']
         
-        # Get role from user_role table
+       
         role_rows = query_fetch(conn,
             """SELECT r.nama_roles FROM user_role ur
                JOIN roles r ON r.id_roles = ur.id_roles
@@ -299,7 +262,7 @@ def login(conn):
         input("Tekan Enter untuk melanjutkan...")
         os.system('cls')
         
-        # Add role mapping for menu selection
+       
         role_map = {
             'Admin': 'admin',
             'Ketua kelompok tani': 'ketua',
@@ -313,9 +276,6 @@ def login(conn):
     os.system('cls')
     return None
 
-# ================================
-# ADMIN MENU
-# ================================
 def menu_admin(conn, user):
     while True:
         print("""
@@ -364,9 +324,7 @@ def menu_admin(conn, user):
         else:
             print("Menu tidak dikenal!")
 
-# ================================
-# KETUA MENU
-# ================================
+
 def menu_ketua(conn, user):
     os.system('cls')
     while True:
@@ -381,7 +339,6 @@ def menu_ketua(conn, user):
 """)
         c = input_required("Pilih menu: ")
 
-        # 1. Lihat hasil panen petani
         if c == "1":
             os.system('cls')
             rows = query_fetch(conn, """
@@ -406,7 +363,6 @@ def menu_ketua(conn, user):
             input("Tekan Enter untuk melanjutkan...")
             os.system('cls')
 
-        # 5. Verifikasi Pupuk Subsidi
         elif c == "5":
             os.system('cls')
             rows = query_fetch(conn, """
@@ -436,7 +392,6 @@ def menu_ketua(conn, user):
 
             hid = input_int("Masukkan id_hasil_panen yang ingin di-ACC: ")
 
-            # cek valid
             valid = [x for x in rows if x['id_hasil_panen'] == hid]
             if not valid:
                 print("ID hasil panen tidak valid!")
@@ -444,7 +399,6 @@ def menu_ketua(conn, user):
                 os.system('cls')
                 continue
 
-            # update status hasil_panen
             today = date.today()
             query_execute(conn, """
                 UPDATE hasil_panen
@@ -453,14 +407,12 @@ def menu_ketua(conn, user):
                 WHERE id_hasil_panen = %s
             """, (today, hid))
 
-            # ambil luas_lahan dari tabel hasil_panen (kolom luas_lahan sudah ada di tabel)
             hp = query_fetch(conn, """
                 SELECT luas_lahan, id_users
                 FROM hasil_panen
                 WHERE id_hasil_panen = %s
             """, (hid,))[0]
 
-            # pastikan nilai luas_lahan valid, lalu hitung kuota (contoh: 1 ha -> 100 kg)
             try:
                 luas_val = float(hp.get('luas_lahan') or 0)
             except Exception:
@@ -469,7 +421,6 @@ def menu_ketua(conn, user):
             kuota = int(luas_val * 100)
             jenis_pupuk = input_required("Jenis pupuk (misal: Urea/Phonska): ")
             
-            # insert pupuk_subsidi (master record)
             new_ps = query_execute(conn, """
                 INSERT INTO pupuk_subsidi (jenis_pupuk, kuota, status)
                 VALUES (%s, %s, %s)
@@ -478,10 +429,8 @@ def menu_ketua(conn, user):
 
             id_pupuk_subsidi = new_ps['id_pupuk_subsidi']
 
-            # tanggal_penggunaan: sekarang (bisa juga minta input)
             tgl_pakai = today
 
-            # insert detail_pupuk (child record linking to pupuk_subsidi)
             query_execute(conn, """
                 INSERT INTO detail_pupuk (id_pupuk_subsidi, id_hasil_panen, jumlah_pupuk, tanggal_penggunaan)
                 VALUES (%s, %s, %s, %s)
@@ -504,9 +453,6 @@ def menu_ketua(conn, user):
             os.system('cls')
             menu_ketua(conn, user)
 
-# ================================
-# PETANI MENU
-# ================================
 def menu_petani(conn, user):
     os.system('cls')
     id_users = user['id_users']
@@ -521,7 +467,6 @@ def menu_petani(conn, user):
 """)
         c = input_required("Pilih menu: ")
 
-        # 1. Input hasil panen
         if c == "1":
             nama_tanaman = input_required("Nama tanaman : ")
             tanggal_panen = input_required("Tanggal panen (YYYY-MM-DD): ")
@@ -531,7 +476,6 @@ def menu_petani(conn, user):
         
             luas_lahan = input_luas_lahan("Luas lahan (ha, 0.5 sampai 2): ")
 
-            # Insert ke hasil_panen
             hp = query_execute(conn, """
                 INSERT INTO hasil_panen
                 (id_users, tanggal_panen, jumlah_hasil, kualitas, status_verifikasi, tanggal_verifikasi, luas_lahan)
@@ -549,7 +493,6 @@ def menu_petani(conn, user):
 
             id_hasil_panen = hp['id_hasil_panen']
 
-            # Insert tanaman
             query_execute(conn, """
                 INSERT INTO tanaman (id_hasil_panen, nama_tanaman, is_deleted)
                 VALUES (%s, %s, %s)
@@ -560,7 +503,6 @@ def menu_petani(conn, user):
             os.system('cls')
             conn.commit()
 
-        # 2. Riwayat hasil panen
         elif c == "2":
             os.system('cls')
             rows = query_fetch(conn, """
@@ -587,7 +529,6 @@ def menu_petani(conn, user):
                     input("Tekan Enter untuk melanjutkan...")
                     os.system('cls')
 
-        # 3. Status pupuk subsidi
         elif c == "3":
             os.system('cls')
             rows = query_fetch(conn, """
@@ -626,9 +567,7 @@ def menu_petani(conn, user):
             input("Tekan Enter untuk melanjutkan...")
             os.system('cls')
 
-# ================================
-# MAIN
-# ================================
+
 def main():
     os.system('cls')
     conn = connect()
