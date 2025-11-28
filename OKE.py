@@ -135,7 +135,7 @@ def register(conn):
                 print("File tidak ditemukan di path tersebut!")
                 continue
         
-            print("✔ SK ketua ditemukan dan valid.")
+            print(" SK ketua ditemukan dan valid.")
             break
 
    
@@ -181,7 +181,7 @@ def register(conn):
             while idx < 0 or idx >= len(rows_ketua):
                 idx = input_int("Pilih nomor ketua: ") - 1
             ketua_dipilih = rows_ketua[idx]
-            print(f"✔ Ketua yang dipilih: {ketua_dipilih['nama']}")
+            print(f"Ketua yang dipilih: {ketua_dipilih['nama']}")
             os.system('cls')
         else:
             print("\nBelum ada ketua kelompok tani terdaftar di sistem.")
@@ -226,7 +226,7 @@ def register(conn):
         VALUES (%s, %s, %s)
     """, (id_users, nama_kecamatan, nama_alamat))
 
-    print(f"\n✔ User '{nama}' berhasil diregistrasi sebagai {nama_role}")
+    print(f"\nUser '{nama}' berhasil diregistrasi sebagai {nama_role}")
     input("Tekan Enter untuk melanjutkan...")
     os.system('cls')
     if nama_role == "Ketua kelompok tani":
@@ -436,7 +436,7 @@ def menu_ketua(conn, user):
                 VALUES (%s, %s, %s, %s)
             """, (id_pupuk_subsidi, hid, kuota, tgl_pakai))
 
-            print(f"✔ Hasil panen {hid} di-ACC. Kuota pupuk {kuota} kg (jenis {jenis_pupuk}) sudah dibuat.")
+            print(f"Hasil panen {hid} di-ACC. Kuota pupuk {kuota} kg (jenis {jenis_pupuk}) sudah dibuat.")
             input("Tekan Enter untuk melanjutkan...")
             os.system('cls')
             conn.commit()
@@ -498,7 +498,7 @@ def menu_petani(conn, user):
                 VALUES (%s, %s, %s)
             """, (id_hasil_panen, nama_tanaman, False))
 
-            print("✔ Data hasil panen dan tanaman berhasil disimpan (status: pending).")
+            print(" Data hasil panen dan tanaman berhasil disimpan (status: pending).")
             input("Tekan Enter untuk melanjutkan...")
             os.system('cls')
             conn.commit()
